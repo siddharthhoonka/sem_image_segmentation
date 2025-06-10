@@ -2,13 +2,15 @@ import streamlit as st
 import os
 import cv2
 import torch
-import torchvision.transforms as T
 import torch.nn as nn
 import matplotlib.pyplot as plt
 from PIL import Image
 import numpy as np
 
 
+# =============================
+# Dataset Class (for training/inference)
+# =============================
 class SEMGrainDataset(torch.utils.data.Dataset):
     def __init__(self, image_dir, mask_dir, transform=None):
         super().__init__()
@@ -55,6 +57,9 @@ class SEMGrainDataset(torch.utils.data.Dataset):
         return image, mask
 
 
+# =============================
+# U-Net Model Definition
+# =============================
 class UNet(nn.Module):
     def __init__(self):
         super(UNet, self).__init__()
@@ -90,17 +95,35 @@ class UNet(nn.Module):
         return torch.sigmoid(self.final(d1))
 
 
-# Load model
+# =============================
+# Load Trained Model Weights
+# =============================
 @st.cache_resource
 def load_model():
-    model = UNet()
-    st.warning("Model weights are not loaded. Use `model.load_state_dict(...)` to load trained weights.")
-    return model
+    model_path = "model_weights.pth"
+
+    if not os.path.exists(model_path):
+        st.error(f"Model weights file not found: {model_path}")
+        st.info("Using untrained model (for demonstration only).")
+        return UNet().eval()
+
+    try:
+        model = UNet()
+        model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu')))
+        model.eval()
+        st.success("✅ Model loaded successfully.")
+        return model
+    except Exception as e:
+        st.error(f"🚨 Failed to load model weights: {e}")
+        st.info("Using untrained model (for demonstration only).")
+        return UNet().eval()
 
 
-# Streamlit UI
-st.title("SEM Grain Segmentation")
-st.write("Segment grains in SEM images using a trained U-Net model.")
+# =============================
+# Streamlit App UI
+# =============================
+st.title("🔬 SEM Grain Segmentation")
+st.write("Segment grains in Scanning Electron Microscopy images using a trained U-Net model.")
 
 uploaded_file = st.file_uploader("Upload an SEM image...", type=["png", "jpg", "jpeg"])
 
@@ -110,7 +133,7 @@ if uploaded_file is not None:
     opencv_image = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
 
     if opencv_image is not None:
-        st.subheader("Original Image")
+        st.subheader("🖼️ Original Image")
         st.image(opencv_image, caption="Uploaded Image", use_container_width=True)
 
         resized_image = cv2.resize(opencv_image, (256, 256)) / 255.0
@@ -122,11 +145,11 @@ if uploaded_file is not None:
         with torch.no_grad():
             prediction = model(input_tensor).squeeze().numpy()
 
-        st.subheader("Segmentation Result")
+        st.subheader("🧠 Segmentation Result")
         threshold = st.slider("Segmentation Threshold", 0.0, 1.0, 0.5)
         binary_prediction = (prediction > threshold).astype(np.uint8) * 255
 
-        st.image(binary_prediction, caption=f"Mask (Threshold: {threshold})", use_container_width=True)
+        st.image(binary_prediction, caption=f"Binary Mask (Threshold: {threshold})", use_container_width=True)
 
         # Overlay
         original_resized_display = cv2.resize(opencv_image, (256, 256))
@@ -136,10 +159,10 @@ if uploaded_file is not None:
         mask_color[:, :, 3] = binary_prediction * 0.5  # Alpha
 
         combined_image = cv2.addWeighted(overlay_image, 1, mask_color, 1, 0)
-        st.image(combined_image, caption="Overlay", use_container_width=True)
+        st.image(combined_image, caption="🔍 Segmentation Overlay", use_container_width=True)
 
     else:
-        st.error("Could not load the uploaded image.")
+        st.error("❌ Could not load the uploaded image.")
 
 else:
-    st.write("Please upload an image to begin.")
+    st.markdown("📂 Please upload an SEM image (`.png`, `.jpg`, `.jpeg`) to begin segmentation.")
