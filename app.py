@@ -103,26 +103,19 @@ def load_model():
     model_path = "model_weights.pth"
 
     if not os.path.exists(model_path):
-        st.error(f"Model weights file not found: {model_path}")
+        st.error(f"🚨 Model weights file not found: {model_path}")
         return UNet().eval()
 
     try:
         model = UNet()
-        model.load_state_dict(torch.load(model_path, map_location=torch.device('cpu'), weights_only=True))
+        model.load_state_dict(torch.load(model_path, map_location='cpu', weights_only=False))
         model.eval()
         st.success("✅ Model loaded successfully.")
         return model
     except Exception as e:
-        st.warning("⚠️ Falling back to unsafe loading method...")
-        try:
-            # Unsafe fallback - only use for testing!
-            model = torch.load(model_path, map_location='cpu', weights_only=False)
-            model.eval()
-            st.success("✅ Model loaded using unsafe fallback.")
-            return model
-        except Exception as ee:
-            st.error(f"🚨 Failed to load model: {ee}")
-            return UNet().eval()
+        st.error(f"❌ Failed to load model: {e}")
+        st.info("🔄 Using untrained model (for demonstration only).")
+        return UNet().eval()
 
 
 # =============================
