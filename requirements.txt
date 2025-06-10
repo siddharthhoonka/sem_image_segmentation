@@ -1,6 +1,8 @@
-streamlit
-torch
-opencv-python-headless
-Pillow
-matplotlib
-numpy
+streamlit==1.29.0
+torch==2.1.0+cpu
+torchvision==0.16.0+cpu
+--extra-index-url https://download.pytorch.org/whl/cpu 
+opencv-python-headless==4.8.1.78
+Pillow==9.5.0
+matplotlib==3.8.2
+numpy==1.26.0
